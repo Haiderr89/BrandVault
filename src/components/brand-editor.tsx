@@ -73,7 +73,7 @@ function BrandForm({ brand, onSaved }: { brand: Brand | null; onSaved: (b: Brand
         </p>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
         <form
           onSubmit={submit}
           className="border-line bg-surface space-y-5 rounded-2xl border p-5 sm:p-6"
@@ -214,7 +214,8 @@ function BrandPreview({ form }: { form: Form }) {
   const logoOk = failedLogo !== form.logoUrl;
 
   return (
-    <aside className="space-y-4 lg:sticky lg:top-8 lg:self-start">
+    <aside className="space-y-4 xl:sticky xl:top-8 xl:self-start">
+      <GoogleFont family={form.fontName} />
       <p className="text-muted text-xs font-medium tracking-wider uppercase">Live preview</p>
       <div className="border-line bg-surface overflow-hidden rounded-2xl border">
         <div
@@ -235,7 +236,7 @@ function BrandPreview({ form }: { form: Form }) {
             </div>
           )}
           <div className="min-w-0">
-            <p className="truncate text-lg font-semibold" style={{ fontFamily: form.fontName || undefined }}>
+            <p className="truncate text-lg font-semibold" style={{ fontFamily: previewFont(form.fontName) }}>
               {form.name || "Your brand"}
             </p>
             <p className="text-xs opacity-80">{form.fontName || "Default font"}</p>
@@ -269,5 +270,21 @@ function BrandPreview({ form }: { form: Form }) {
         </div>
       </div>
     </aside>
+  );
+}
+
+const previewFont = (name: string) =>
+  name.trim() ? `"${name.trim().replace(/"/g, "")}", var(--font-sans), sans-serif` : undefined;
+
+// Best-effort: load the named font from Google Fonts so the preview renders it.
+// Unknown names just fall back to the app font.
+function GoogleFont({ family }: { family: string }) {
+  const name = family.trim();
+  if (!name || !/^[\w \-]{1,60}$/.test(name)) return null;
+  return (
+    <link
+      rel="stylesheet"
+      href={`https://fonts.googleapis.com/css2?family=${encodeURIComponent(name)}:wght@400;600&display=swap`}
+    />
   );
 }
