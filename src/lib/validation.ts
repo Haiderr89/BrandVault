@@ -79,14 +79,7 @@ export const assetListQuerySchema = z.object({
 // on save, so nothing unvalidated ever reaches the asset record.
 export const aiSuggestionSchema = z.object({
   tags: z
-    .array(
-      z
-        .string()
-        .trim()
-        .toLowerCase()
-        .min(1)
-        .max(32, "Each tag must be at most 32 characters."),
-    )
+    .array(z.string().trim().toLowerCase().min(1).max(32, "Each tag must be at most 32 characters."))
     .min(1, "At least one tag is required.")
     .max(10, "At most 10 tags.")
     .transform((tags) => [...new Set(tags)]),

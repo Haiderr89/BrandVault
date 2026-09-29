@@ -13,8 +13,7 @@ export class HttpError extends Error {
   }
 }
 
-export const badRequest = (msg: string, details?: unknown) =>
-  new HttpError(400, "bad_request", msg, details);
+export const badRequest = (msg: string, details?: unknown) => new HttpError(400, "bad_request", msg, details);
 export const unauthorized = () => new HttpError(401, "unauthorized", "Sign in to continue.");
 export const forbidden = (msg = "You don't have access to this resource.") =>
   new HttpError(403, "forbidden", msg);
@@ -84,9 +83,7 @@ export function route(handler: Handler<{ params: Record<string, string> }>) {
 }
 
 /** Like `route`, but rejects with 401 unless there is a valid session. */
-export function authedRoute(
-  handler: Handler<{ params: Record<string, string>; session: Session }>,
-) {
+export function authedRoute(handler: Handler<{ params: Record<string, string>; session: Session }>) {
   return route(async (req, { params }) => {
     const session = await readSession(req.cookies.get(SESSION_COOKIE)?.value);
     if (!session) throw unauthorized();
