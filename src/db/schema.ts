@@ -98,7 +98,10 @@ export const assets = pgTable(
     name: varchar("name", { length: 200 }).notNull(),
     type: assetType("type").notNull(),
     url: text("url").notNull(),
-    tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
+    tags: text("tags")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     description: text("description"),
     usageSuggestion: text("usage_suggestion"),
     ...timestamps,

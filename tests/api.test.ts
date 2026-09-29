@@ -36,7 +36,10 @@ describe("auth", () => {
   });
 
   it("rejects duplicate signups with 409", async () => {
-    const r = await call(signup.POST, { method: "POST", body: { email: "ALICE@example.com", password: "Password1!" } });
+    const r = await call(signup.POST, {
+      method: "POST",
+      body: { email: "ALICE@example.com", password: "Password1!" },
+    });
     expect(r.status).toBe(409);
   });
 
@@ -126,7 +129,12 @@ describe("folders, assets, trash", () => {
     const a = await call(assetsRoute.POST, {
       method: "POST",
       cookie: alice,
-      body: { name: "Banner", type: "image", url: "https://cdn.example.com/b.png", folderId: f2.body.folder.id },
+      body: {
+        name: "Banner",
+        type: "image",
+        url: "https://cdn.example.com/b.png",
+        folderId: f2.body.folder.id,
+      },
     });
     expect(a.status).toBe(201);
     const id = a.body.asset.id;
@@ -137,16 +145,27 @@ describe("folders, assets, trash", () => {
     });
 
     // Listing is per folder; search spans the workspace.
-    const inQ4 = await call(assetsRoute.GET, { cookie: alice, path: `/api/assets?folderId=${f2.body.folder.id}` });
+    const inQ4 = await call(assetsRoute.GET, {
+      cookie: alice,
+      path: `/api/assets?folderId=${f2.body.folder.id}`,
+    });
     expect(inQ4.body.assets.map((x: { name: string }) => x.name)).toEqual(["Banner"]);
     const search = await call(assetsRoute.GET, { cookie: alice, path: "/api/assets?q=banner&sort=name_asc" });
     expect(search.body.assets.map((x: { name: string }) => x.name)).toEqual(["Another banner", "Banner"]);
 
     // Non-empty folder can't be deleted.
-    expect((await call(folderById.DELETE, { method: "DELETE", cookie: alice, params: { id: f2.body.folder.id } })).status).toBe(409);
+    expect(
+      (await call(folderById.DELETE, { method: "DELETE", cookie: alice, params: { id: f2.body.folder.id } }))
+        .status,
+    ).toBe(409);
 
     // Move to root, then trash.
-    const moved = await call(assetById.PATCH, { method: "PATCH", cookie: alice, params: { id }, body: { folderId: null } });
+    const moved = await call(assetById.PATCH, {
+      method: "PATCH",
+      cookie: alice,
+      params: { id },
+      body: { folderId: null },
+    });
     expect(moved.body.asset.folderId).toBeNull();
 
     expect((await call(trashOne.POST, { method: "POST", cookie: alice, params: { id } })).status).toBe(200);
@@ -164,15 +183,23 @@ describe("folders, assets, trash", () => {
     expect((await call(trashList.GET, { cookie: alice })).body.assets).toHaveLength(0);
 
     // Permanent delete only works from the trash.
-    expect((await call(assetById.DELETE, { method: "DELETE", cookie: alice, params: { id } })).status).toBe(409);
+    expect((await call(assetById.DELETE, { method: "DELETE", cookie: alice, params: { id } })).status).toBe(
+      409,
+    );
     await call(trashOne.POST, { method: "POST", cookie: alice, params: { id } });
-    expect((await call(assetById.DELETE, { method: "DELETE", cookie: alice, params: { id } })).status).toBe(204);
+    expect((await call(assetById.DELETE, { method: "DELETE", cookie: alice, params: { id } })).status).toBe(
+      204,
+    );
   });
 });
 
 describe("authorization: users cannot touch each other's data", () => {
   it("returns 404 for another workspace's assets and folders", async () => {
-    const folder = await call(foldersRoute.POST, { method: "POST", cookie: alice, body: { name: "Private" } });
+    const folder = await call(foldersRoute.POST, {
+      method: "POST",
+      cookie: alice,
+      body: { name: "Private" },
+    });
     const asset = await call(assetsRoute.POST, {
       method: "POST",
       cookie: alice,
@@ -182,13 +209,28 @@ describe("authorization: users cannot touch each other's data", () => {
     const fid = folder.body.folder.id;
 
     expect((await call(assetById.GET, { cookie: bob, params: { id: aid } })).status).toBe(404);
-    expect((await call(assetById.PATCH, { method: "PATCH", cookie: bob, params: { id: aid }, body: { name: "pwned" } })).status).toBe(404);
-    expect((await call(trashOne.POST, { method: "POST", cookie: bob, params: { id: aid } })).status).toBe(404);
+    expect(
+      (
+        await call(assetById.PATCH, {
+          method: "PATCH",
+          cookie: bob,
+          params: { id: aid },
+          body: { name: "pwned" },
+        })
+      ).status,
+    ).toBe(404);
+    expect((await call(trashOne.POST, { method: "POST", cookie: bob, params: { id: aid } })).status).toBe(
+      404,
+    );
     expect((await call(folderById.GET, { cookie: bob, params: { id: fid } })).status).toBe(404);
-    expect((await call(folderById.DELETE, { method: "DELETE", cookie: bob, params: { id: fid } })).status).toBe(404);
+    expect(
+      (await call(folderById.DELETE, { method: "DELETE", cookie: bob, params: { id: fid } })).status,
+    ).toBe(404);
 
     // Bob can't list Alice's folder or file assets into it.
-    expect((await call(assetsRoute.GET, { cookie: bob, path: `/api/assets?folderId=${fid}` })).status).toBe(404);
+    expect((await call(assetsRoute.GET, { cookie: bob, path: `/api/assets?folderId=${fid}` })).status).toBe(
+      404,
+    );
     const intoAlice = await call(assetsRoute.POST, {
       method: "POST",
       cookie: bob,
@@ -201,6 +243,8 @@ describe("authorization: users cannot touch each other's data", () => {
     expect(search.body.assets).toHaveLength(0);
 
     // Alice's asset is untouched.
-    expect((await call(assetById.GET, { cookie: alice, params: { id: aid } })).body.asset.name).toBe("Secret logo");
+    expect((await call(assetById.GET, { cookie: alice, params: { id: aid } })).body.asset.name).toBe(
+      "Secret logo",
+    );
   });
 });

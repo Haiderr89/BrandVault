@@ -22,7 +22,10 @@ let cookie: string;
 let assetId: string;
 
 beforeAll(async () => {
-  const r = await call(signup.POST, { method: "POST", body: { email: "ai@example.com", password: "Password1!" } });
+  const r = await call(signup.POST, {
+    method: "POST",
+    body: { email: "ai@example.com", password: "Password1!" },
+  });
   cookie = sessionCookie(r.res);
   const a = await call(assetsRoute.POST, {
     method: "POST",
@@ -38,11 +41,19 @@ describe("AI tagging", () => {
   it("returns a validated, normalised suggestion without saving it", async () => {
     parse.mockResolvedValue({
       stop_reason: "end_turn",
-      parsed_output: { tags: ["Sale", "summer", "sale", "banner"], description: " Banner. ", usage_suggestion: "Web hero." },
+      parsed_output: {
+        tags: ["Sale", "summer", "sale", "banner"],
+        description: " Banner. ",
+        usage_suggestion: "Web hero.",
+      },
     });
     const r = await call(suggest, { method: "POST", cookie, params: { id: assetId } });
     expect(r.status).toBe(200);
-    expect(r.body.suggestion).toEqual({ tags: ["sale", "summer", "banner"], description: "Banner.", usage_suggestion: "Web hero." });
+    expect(r.body.suggestion).toEqual({
+      tags: ["sale", "summer", "banner"],
+      description: "Banner.",
+      usage_suggestion: "Web hero.",
+    });
 
     // The request carried the asset context, and nothing was saved yet.
     expect(parse.mock.calls[0][0].messages[0].content).toContain("Summer sale banner");
@@ -51,7 +62,10 @@ describe("AI tagging", () => {
   });
 
   it("rejects model output that fails validation with 502", async () => {
-    parse.mockResolvedValue({ stop_reason: "end_turn", parsed_output: { tags: [], description: "", usage_suggestion: "x" } });
+    parse.mockResolvedValue({
+      stop_reason: "end_turn",
+      parsed_output: { tags: [], description: "", usage_suggestion: "x" },
+    });
     const r = await call(suggest, { method: "POST", cookie, params: { id: assetId } });
     expect(r.status).toBe(502);
     expect(r.body.error.code).toBe("ai_failed");
@@ -63,14 +77,23 @@ describe("AI tagging", () => {
   });
 
   it("saves a reviewed suggestion, validating the body", async () => {
-    const bad = await call(save, { method: "PATCH", cookie, params: { id: assetId }, body: { tags: "nope" } });
+    const bad = await call(save, {
+      method: "PATCH",
+      cookie,
+      params: { id: assetId },
+      body: { tags: "nope" },
+    });
     expect(bad.status).toBe(400);
 
     const ok = await call(save, {
       method: "PATCH",
       cookie,
       params: { id: assetId },
-      body: { tags: ["summer", "sale"], description: "Summer sale banner.", usage_suggestion: "Homepage hero." },
+      body: {
+        tags: ["summer", "sale"],
+        description: "Summer sale banner.",
+        usage_suggestion: "Homepage hero.",
+      },
     });
     expect(ok.status).toBe(200);
     expect(ok.body.asset.tags).toEqual(["summer", "sale"]);

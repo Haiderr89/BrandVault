@@ -3,12 +3,7 @@ import type { z } from "zod";
 import { db } from "@/db";
 import { assets, folders } from "@/db/schema";
 import { conflict, notFound } from "@/lib/http";
-import type {
-  AiSuggestion,
-  AssetSort,
-  assetCreateSchema,
-  assetUpdateSchema,
-} from "@/lib/validation";
+import type { AiSuggestion, AssetSort, assetCreateSchema, assetUpdateSchema } from "@/lib/validation";
 import { getFolder } from "./folders";
 
 const inWorkspace = (workspaceId: string) => eq(assets.workspaceId, workspaceId);
@@ -86,11 +81,7 @@ export async function createAsset(workspaceId: string, input: z.infer<typeof ass
   return asset;
 }
 
-export async function updateAsset(
-  workspaceId: string,
-  id: string,
-  input: z.infer<typeof assetUpdateSchema>,
-) {
+export async function updateAsset(workspaceId: string, id: string, input: z.infer<typeof assetUpdateSchema>) {
   await assertFolder(workspaceId, input.folderId);
   const [asset] = await db
     .update(assets)

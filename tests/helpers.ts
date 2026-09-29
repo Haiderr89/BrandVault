@@ -4,7 +4,14 @@ type Handler = (req: NextRequest, ctx: { params: Promise<Record<string, string>>
 
 export async function call(
   handler: Handler,
-  opts: { method?: string; path?: string; body?: unknown; cookie?: string; params?: Record<string, string>; headers?: Record<string, string> } = {},
+  opts: {
+    method?: string;
+    path?: string;
+    body?: unknown;
+    cookie?: string;
+    params?: Record<string, string>;
+    headers?: Record<string, string>;
+  } = {},
 ) {
   const req = new NextRequest(`http://localhost${opts.path ?? "/"}`, {
     method: opts.method ?? "GET",
