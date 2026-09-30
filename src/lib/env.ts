@@ -5,6 +5,9 @@ const schema = z.object({
   AUTH_SECRET: z.string().min(32, "AUTH_SECRET must be at least 32 characters"),
   ANTHROPIC_API_KEY: z.string().optional(),
   ANTHROPIC_MODEL: z.string().default("claude-opus-5"),
+  // Optional n8n bonus. When unset, webhook events are skipped.
+  N8N_WEBHOOK_URL: z.url().optional().or(z.literal("").transform(() => undefined)),
+  N8N_WEBHOOK_SECRET: z.string().optional(),
 });
 
 type Env = z.infer<typeof schema>;
