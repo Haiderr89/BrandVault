@@ -1,0 +1,172 @@
+{
+  "id": "BrandVaultHook01",
+  "name": "BrandVault events → email",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "brandvault",
+        "authentication": "headerAuth",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "5f0c2a8e-1d7b-4c8f-9a51-2f7e0b1c3a01",
+      "name": "BrandVault webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "webhookId": "0b6f2d0e-7c1a-4a51-9d3e-6a2b8f4c1e77",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "bvHeaderAuth01",
+          "name": "BrandVault webhook secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ ['brand.updated', 'asset.restored', 'asset.ai_tags_saved'].includes($json.body.event) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "5f0c2a8e-1d7b-4c8f-9a51-2f7e0b1c3a02",
+      "name": "Known event?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "subject",
+              "type": "string",
+              "value": "={{ { 'brand.updated': 'Brand kit updated', 'asset.restored': 'Asset restored from trash', 'asset.ai_tags_saved': 'AI tags saved' }[$json.body.event] }} · BrandVault"
+            },
+            {
+              "id": "a2",
+              "name": "message",
+              "type": "string",
+              "value": "={{ $json.body.userEmail }} triggered \"{{ $json.body.event }}\" on {{ $json.body.assetId ? 'asset ' + $json.body.assetId : 'brand ' + $json.body.brandId }} at {{ $json.body.timestamp }}."
+            },
+            {
+              "id": "a3",
+              "name": "event",
+              "type": "string",
+              "value": "={{ $json.body.event }}"
+            },
+            {
+              "id": "a4",
+              "name": "userEmail",
+              "type": "string",
+              "value": "={{ $json.body.userEmail }}"
+            },
+            {
+              "id": "a5",
+              "name": "timestamp",
+              "type": "string",
+              "value": "={{ $json.body.timestamp }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5f0c2a8e-1d7b-4c8f-9a51-2f7e0b1c3a03",
+      "name": "Format message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [480, -100]
+    },
+    {
+      "parameters": {
+        "fromEmail": "brandvault@example.com",
+        "toEmail": "={{ $json.userEmail }}",
+        "subject": "={{ $json.subject }}",
+        "emailFormat": "text",
+        "text": "={{ $json.message }}",
+        "options": {}
+      },
+      "id": "5f0c2a8e-1d7b-4c8f-9a51-2f7e0b1c3a04",
+      "name": "Send email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [720, -100]
+    },
+    {
+      "parameters": {},
+      "id": "5f0c2a8e-1d7b-4c8f-9a51-2f7e0b1c3a05",
+      "name": "Ignore",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [480, 100]
+    }
+  ],
+  "connections": {
+    "BrandVault webhook": {
+      "main": [
+        [
+          {
+            "node": "Known event?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Known event?": {
+      "main": [
+        [
+          {
+            "node": "Format message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ignore",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format message": {
+      "main": [
+        [
+          {
+            "node": "Send email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}

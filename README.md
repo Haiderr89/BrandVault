@@ -4,7 +4,7 @@ A brand kit and asset library: one brand profile per workspace, plus nested fold
 
 - **Live demo:** _TBD_
 - **Demo login:** `demo@brandvault.dev` / `Demo1234!`, or click **Continue as demo** on the sign-in page
-- **Tests:** `npm test` (13 API tests, no database needed)
+- **Tests:** `npm test` (18 API tests, no database needed)
 
 ## Stack
 
@@ -71,27 +71,27 @@ users 1──1 workspaces 1──1 brands
 
 All endpoints return JSON. Errors have the shape `{ "error": { "code", "message", "details?" } }`.
 
-| Method    | Path                                              | Notes                                                                                        |
-| --------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| POST      | `/api/auth/signup`, `/login`, `/logout`, `/demo`  | `demo` creates the demo account if needed, then signs in                                     |
-| GET       | `/api/auth/me`                                    |                                                                                              |
-| GET       | `/api/brand`                                      | `{ brand: null }` if not created yet                                                         |
-| POST      | `/api/brand`                                      | 409 if the workspace already has one                                                         |
-| PATCH     | `/api/brand`                                      | Partial update                                                                               |
-| GET       | `/api/folders?parentId=`                          | Children of a folder (root if omitted). `?all=true` returns a flat list                      |
-| POST      | `/api/folders`                                    | `{ name, parentId? }`. 400 beyond depth 3                                                    |
-| GET       | `/api/folders/:id`                                | Folder + ancestor path (breadcrumbs)                                                         |
-| PATCH     | `/api/folders/:id`                                | Rename                                                                                       |
-| DELETE    | `/api/folders/:id`                                | 409 if not empty                                                                             |
-| GET       | `/api/assets?folderId=&q=&sort=`                  | Live assets only. `q` searches the whole workspace. `sort` = `updated_desc` (default) or `name_asc` |
-| POST      | `/api/assets`                                     | `{ name, type, url, folderId? }`                                                             |
-| GET/PATCH | `/api/assets/:id`                                 | PATCH also moves (`folderId`)                                                                |
-| DELETE    | `/api/assets/:id`                                 | Permanent. Only allowed for trashed assets (else 409)                                        |
-| POST      | `/api/assets/:id/trash`                           | Soft delete                                                                                  |
-| POST      | `/api/assets/:id/restore`                         |                                                                                              |
-| GET       | `/api/trash`                                      | Trashed assets only                                                                          |
-| POST      | `/api/assets/:id/ai-tags`                         | Returns a suggestion. **Does not save.**                                                     |
-| PATCH     | `/api/assets/:id/ai-tags/save`                    | Saves the reviewed suggestion (validated again)                                              |
+| Method    | Path                                             | Notes                                                                                               |
+| --------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| POST      | `/api/auth/signup`, `/login`, `/logout`, `/demo` | `demo` creates the demo account if needed, then signs in                                            |
+| GET       | `/api/auth/me`                                   |                                                                                                     |
+| GET       | `/api/brand`                                     | `{ brand: null }` if not created yet                                                                |
+| POST      | `/api/brand`                                     | 409 if the workspace already has one                                                                |
+| PATCH     | `/api/brand`                                     | Partial update                                                                                      |
+| GET       | `/api/folders?parentId=`                         | Children of a folder (root if omitted). `?all=true` returns a flat list                             |
+| POST      | `/api/folders`                                   | `{ name, parentId? }`. 400 beyond depth 3                                                           |
+| GET       | `/api/folders/:id`                               | Folder + ancestor path (breadcrumbs)                                                                |
+| PATCH     | `/api/folders/:id`                               | Rename                                                                                              |
+| DELETE    | `/api/folders/:id`                               | 409 if not empty                                                                                    |
+| GET       | `/api/assets?folderId=&q=&sort=`                 | Live assets only. `q` searches the whole workspace. `sort` = `updated_desc` (default) or `name_asc` |
+| POST      | `/api/assets`                                    | `{ name, type, url, folderId? }`                                                                    |
+| GET/PATCH | `/api/assets/:id`                                | PATCH also moves (`folderId`)                                                                       |
+| DELETE    | `/api/assets/:id`                                | Permanent. Only allowed for trashed assets (else 409)                                               |
+| POST      | `/api/assets/:id/trash`                          | Soft delete                                                                                         |
+| POST      | `/api/assets/:id/restore`                        |                                                                                                     |
+| GET       | `/api/trash`                                     | Trashed assets only                                                                                 |
+| POST      | `/api/assets/:id/ai-tags`                        | Returns a suggestion. **Does not save.**                                                            |
+| PATCH     | `/api/assets/:id/ai-tags/save`                   | Saves the reviewed suggestion (validated again)                                                     |
 
 Status codes: **400** invalid input or JSON, **401** missing, invalid or expired session, **403** cross-origin mutation, **404** not found _or belongs to another workspace_, **409** state conflicts (duplicate email, brand exists, folder not empty, already trashed), **502/503** AI failures.
 
@@ -124,6 +124,37 @@ Status codes: **400** invalid input or JSON, **401** missing, invalid or expired
 - **Safety:** the API key only exists server-side (`ANTHROPIC_API_KEY`). No AI call happens from the browser. Without a key the endpoint returns 503 and the UI shows the error with a retry.
 - Covered by `tests/ai.test.ts`, which mocks the SDK: normalization, invalid output, truncation and the save validation.
 
+## Bonus: n8n webhook
+
+The backend sends a webhook to n8n for three events, and the n8n workflow sends an email notification.
+
+| Event                 | When                                                              |
+| --------------------- | ----------------------------------------------------------------- |
+| `brand.updated`       | `PATCH /api/brand` succeeds                                       |
+| `asset.restored`      | `POST /api/assets/:id/restore` succeeds                           |
+| `asset.ai_tags_saved` | `PATCH /api/assets/:id/ai-tags/save` succeeds (after user review) |
+
+**Payload** (POST, JSON, header `X-BrandVault-Secret: <N8N_WEBHOOK_SECRET>`):
+
+```json
+{
+  "event": "asset.restored",
+  "assetId": "5b0f…",
+  "brandId": null,
+  "userEmail": "demo@brandvault.dev",
+  "timestamp": "2026-10-01T10:00:00.000Z"
+}
+```
+
+- **Code:** [`src/server/webhooks.ts`](src/server/webhooks.ts). Events are sent with Next's `after()`, once the response has been returned, so a slow or down n8n never slows the app or fails the request. Failures are logged, and requests time out after 5s. If `N8N_WEBHOOK_URL` is unset, nothing is sent.
+- **Workflow file:** [`n8n/brandvault-webhook.json`](n8n/brandvault-webhook.json): **Webhook** (Header Auth) → **Known event?** → **Format message** → **Send email**. Unknown events go to **Ignore**. Every run, with the formatted message, is also visible in n8n's _Executions_ log.
+- **Setup:** in n8n, import the file, then:
+  1. Create a _Header Auth_ credential with name `X-BrandVault-Secret` and your secret as the value.
+  2. Attach an SMTP credential to _Send email_.
+  3. Activate the workflow.
+  4. Set `N8N_WEBHOOK_URL` to the production webhook URL and set `N8N_WEBHOOK_SECRET`.
+- Covered by `tests/webhooks.test.ts`: payload shape, secret header, events not fired on failed actions, and a webhook failure never breaking the request.
+
 ## Tradeoffs and what I skipped
 
 - **Real file upload:** skipped. Assets are URL-based metadata as the brief allows. Thumbnails render for image and logo URLs.
@@ -142,4 +173,4 @@ Status codes: **400** invalid input or JSON, **401** missing, invalid or expired
 
 ## Environment variables
 
-See [`.env.example`](.env.example): `DATABASE_URL`, `AUTH_SECRET`, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `DEMO_PASSWORD`.
+See [`.env.example`](.env.example): `DATABASE_URL`, `AUTH_SECRET`, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `DEMO_PASSWORD`, and optionally `N8N_WEBHOOK_URL` and `N8N_WEBHOOK_SECRET`.
