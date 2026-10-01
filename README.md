@@ -147,10 +147,10 @@ The backend sends a webhook to n8n for three events, and the n8n workflow sends 
 ```
 
 - **Code:** [`src/server/webhooks.ts`](src/server/webhooks.ts). Events are sent with Next's `after()`, once the response has been returned, so a slow or down n8n never slows the app or fails the request. Failures are logged, and requests time out after 5s. If `N8N_WEBHOOK_URL` is unset, nothing is sent.
-- **Workflow file:** [`n8n/brandvault-webhook.json`](n8n/brandvault-webhook.json): **Webhook** (Header Auth) → **Known event?** → **Format message** → **Send email**. Unknown events go to **Ignore**. Every run, with the formatted message, is also visible in n8n's _Executions_ log.
+- **Workflow file:** [`n8n/brandvault-webhook.json`](n8n/brandvault-webhook.json): **Webhook** (Header Auth) → **Known event?** → **Format message** → **Send email** (Gmail, to an admin inbox). Unknown events go to **Ignore**. Every run, with the formatted message, is also visible in n8n's _Executions_ log.
 - **Setup:** in n8n, import the file, then:
   1. Create a _Header Auth_ credential with name `X-BrandVault-Secret` and your secret as the value.
-  2. Attach an SMTP credential to _Send email_.
+  2. On _Send email_, sign in with Google and set _To_ to the admin inbox. You can swap in the SMTP _Send Email_ node if you prefer.
   3. Activate the workflow.
   4. Set `N8N_WEBHOOK_URL` to the production webhook URL and set `N8N_WEBHOOK_SECRET`.
 - Covered by `tests/webhooks.test.ts`: payload shape, secret header, events not fired on failed actions, and a webhook failure never breaking the request.

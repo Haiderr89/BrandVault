@@ -99,18 +99,21 @@
     },
     {
       "parameters": {
-        "fromEmail": "brandvault@example.com",
-        "toEmail": "={{ $json.userEmail }}",
+        "operation": "send",
+        "sendTo": "you@example.com",
         "subject": "={{ $json.subject }}",
-        "emailFormat": "text",
-        "text": "={{ $json.message }}",
-        "options": {}
+        "emailType": "text",
+        "message": "={{ $json.message }}\n\nEvent: {{ $json.event }}\nUser: {{ $json.userEmail }}\nTime: {{ $json.timestamp }}",
+        "options": {
+          "appendAttribution": false
+        }
       },
       "id": "5f0c2a8e-1d7b-4c8f-9a51-2f7e0b1c3a04",
       "name": "Send email",
-      "type": "n8n-nodes-base.emailSend",
+      "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [720, -100]
+      "position": [720, -100],
+      "webhookId": "3d2a9c41-58e7-4f0b-a1c6-9e7d2b5f8a10"
     },
     {
       "parameters": {},
