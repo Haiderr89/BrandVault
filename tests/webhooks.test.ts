@@ -18,7 +18,10 @@ let cookie: string;
 let assetId: string;
 
 beforeAll(async () => {
-  const r = await call(signup.POST, { method: "POST", body: { email: "hooks@example.com", password: "Password1!" } });
+  const r = await call(signup.POST, {
+    method: "POST",
+    body: { email: "hooks@example.com", password: "Password1!" },
+  });
   cookie = sessionCookie(r.res);
   await call(brand.POST, {
     method: "POST",
@@ -85,5 +88,18 @@ describe("n8n webhooks", () => {
     fetchMock.mockRejectedValueOnce(new Error("n8n down"));
     const r = await call(brand.PATCH, { method: "PATCH", cookie, body: { name: "Still works" } });
     expect(r.status).toBe(200);
+  });
+});
+
+describe("webhook secret hygiene", () => {
+  it("never logs the error message (it can contain the secret)", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock.mockRejectedValueOnce(
+      new TypeError('Headers.append: "shh-secret-value" is an invalid header value'),
+    );
+    await call(brand.PATCH, { method: "PATCH", cookie, body: { name: "Hygiene" } });
+    await vi.waitFor(() => expect(spy).toHaveBeenCalled());
+    expect(spy.mock.calls.flat().join(" ")).not.toContain("shh-secret-value");
+    spy.mockRestore();
   });
 });

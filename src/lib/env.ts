@@ -14,7 +14,8 @@ const schema = z.object({
     .url()
     .optional()
     .or(z.literal("").transform(() => undefined)),
-  N8N_WEBHOOK_SECRET: z.string().optional(),
+  // Trimmed: a pasted trailing newline would make it an invalid header value.
+  N8N_WEBHOOK_SECRET: z.string().trim().optional(),
 });
 
 type Env = z.infer<typeof schema>;

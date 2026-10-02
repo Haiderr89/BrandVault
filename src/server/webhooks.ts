@@ -28,7 +28,9 @@ export async function sendWebhook(payload: WebhookPayload) {
     });
     if (!res.ok) console.error(`Webhook ${payload.event} failed: HTTP ${res.status}`);
   } catch (err) {
-    console.error(`Webhook ${payload.event} failed:`, (err as Error).message);
+    // Log the error type only: messages (e.g. from Headers) can echo the secret.
+    const reason = (err as Error).name === "TimeoutError" ? "timed out" : (err as Error).name;
+    console.error(`Webhook ${payload.event} failed: ${reason}`);
   }
 }
 
