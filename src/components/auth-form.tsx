@@ -106,7 +106,6 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
             >
               Continue as demo
             </Button>
-            <p className="text-muted mt-3 text-center text-xs">Demo login: demo@brandvault.dev / Demo1234!</p>
             <p className="text-muted mt-8 text-center text-sm">
               {isLogin ? "New here? " : "Already have an account? "}
               <Link
