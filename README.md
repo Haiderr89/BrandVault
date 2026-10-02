@@ -2,7 +2,7 @@
 
 A brand kit and asset library: one brand profile per workspace, plus nested folders, search, sort, trash/restore and AI-assisted tagging.
 
-- **Live demo:** _TBD_
+- **Live demo:** https://brand-vault-theta.vercel.app
 - **Demo login:** `demo@brandvault.dev` / `Demo1234!`, or click **Continue as demo** on the sign-in page
 - **Tests:** `npm test` (24 API tests, no database needed)
 
