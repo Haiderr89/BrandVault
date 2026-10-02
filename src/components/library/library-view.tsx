@@ -22,6 +22,7 @@ import { createPortal } from "react-dom";
 import { api, ApiError, useApi } from "@/lib/api-client";
 import { timeAgo } from "@/lib/format";
 import type { Asset, Folder } from "@/lib/types";
+import { useConfirm } from "../confirm";
 import { Button, EmptyState, ErrorState, Select, useToast } from "../ui";
 import { AiTagsModal, TagList } from "./ai-tags-modal";
 import { AssetFormModal } from "./asset-form-modal";
@@ -37,6 +38,7 @@ export function LibraryView() {
   const pathname = usePathname();
   const params = useSearchParams();
   const toast = useToast();
+  const confirm = useConfirm();
 
   const folderId = params.get("folder");
   const q = params.get("q") ?? "";
@@ -133,15 +135,23 @@ export function LibraryView() {
     }
   }
 
-  async function deleteFolder(folder: Folder) {
-    if (!confirm(`Delete the folder "${folder.name}"?`)) return;
-    try {
-      await api(`/api/folders/${folder.id}`, { method: "DELETE" });
-      subfolders.reload();
-      toast({ tone: "success", message: "Folder deleted" });
-    } catch (err) {
-      toast({ tone: "error", message: (err as ApiError).message });
-    }
+  function deleteFolder(folder: Folder) {
+    confirm({
+      title: "Delete this folder?",
+      message: (
+        <>
+          <span className="text-fg font-medium">“{folder.name}”</span> will be removed. Folders must be empty
+          first; trashed assets from it will restore to the library root.
+        </>
+      ),
+      confirmLabel: "Delete folder",
+      onConfirm: async () => {
+        // A 409 (not empty) is shown inside the dialog by ConfirmDialog.
+        await api(`/api/folders/${folder.id}`, { method: "DELETE" });
+        subfolders.reload();
+        toast({ tone: "success", message: "Folder deleted" });
+      },
+    });
   }
 
   if (folderId && folderInfo.error) {

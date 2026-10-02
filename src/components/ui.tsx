@@ -10,7 +10,7 @@ import {
   useId,
   useRef,
   useState,
-  type ButtonHTMLAttributes,
+  type ComponentProps,
   type InputHTMLAttributes,
   type ReactNode,
   type SelectHTMLAttributes,
@@ -34,7 +34,7 @@ export function Button({
   children,
   disabled,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & {
+}: ComponentProps<"button"> & {
   variant?: Variant;
   size?: "sm" | "md";
   loading?: boolean;

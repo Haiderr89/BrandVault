@@ -6,17 +6,37 @@ import { api, ApiError, useApi } from "@/lib/api-client";
 import { timeAgo } from "@/lib/format";
 import type { Asset } from "@/lib/types";
 import { AssetIcon, ASSET_TYPE_META } from "./library/asset-icon";
+import { useConfirm } from "./confirm";
 import { Button, EmptyState, ErrorState, Spinner, useToast } from "./ui";
 
 export function TrashView() {
   const { data, error, loading, reload, setData } = useApi<{ assets: Asset[] }>("/api/trash");
   const toast = useToast();
+  const confirm = useConfirm();
   const [busy, setBusy] = useState<string | null>(null);
 
   const remove = (id: string) => setData((d) => d && { assets: d.assets.filter((a) => a.id !== id) });
 
+  function deleteForever(asset: Asset) {
+    confirm({
+      title: "Delete permanently?",
+      message: (
+        <>
+          <span className="text-fg font-medium">“{asset.name}”</span> will be gone for good. This can&apos;t
+          be undone.
+        </>
+      ),
+      confirmLabel: "Delete forever",
+      onConfirm: async () => {
+        await api(`/api/assets/${asset.id}`, { method: "DELETE" });
+        remove(asset.id);
+        toast({ tone: "success", message: "Deleted permanently" });
+      },
+    });
+  }
+
   async function act(asset: Asset, kind: "restore" | "delete") {
-    if (kind === "delete" && !confirm(`Permanently delete "${asset.name}"? This can't be undone.`)) return;
+    if (kind === "delete") return deleteForever(asset);
     setBusy(asset.id + kind);
     try {
       if (kind === "restore") await api(`/api/assets/${asset.id}/restore`, { method: "POST" });
