@@ -4,6 +4,7 @@ import clsx from "clsx";
 import {
   ChevronRight,
   Folder as FolderIcon,
+  FolderOpen,
   FolderPlus,
   MoreHorizontal,
   Pencil,
@@ -20,10 +21,10 @@ import { useEffect, useRef, useState, type DragEvent, type ReactNode } from "rea
 import { api, ApiError, useApi } from "@/lib/api-client";
 import { timeAgo } from "@/lib/format";
 import type { Asset, Folder } from "@/lib/types";
-import { Button, EmptyState, ErrorState, Select, Spinner, useToast } from "../ui";
+import { Button, EmptyState, ErrorState, Select, useToast } from "../ui";
 import { AiTagsModal, TagList } from "./ai-tags-modal";
 import { AssetFormModal } from "./asset-form-modal";
-import { ASSET_TYPE_META } from "./asset-icon";
+import { TypeChip } from "./asset-icon";
 import { AssetThumb } from "./asset-thumb";
 import { FolderFormModal } from "./folder-form-modal";
 
@@ -181,10 +182,19 @@ export function LibraryView() {
         ))}
       </nav>
 
-      <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {folderId ? (current?.name ?? " ") : "Library"}
-        </h1>
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="font-display text-3xl font-semibold tracking-tight">
+            {folderId ? (current?.name ?? " ") : "Library"}
+          </h1>
+          <p className="text-muted mt-1 text-sm">
+            {searching
+              ? "Searching across your whole library"
+              : assets.data && subfolders.data
+                ? `${plural(folderList.length, "folder")} · ${plural(assetList.length, "asset")}`
+                : " "}
+          </p>
+        </div>
         <div className="flex gap-2">
           <Button
             variant="secondary"
@@ -268,9 +278,10 @@ export function LibraryView() {
                 <>
                   <h2 className="text-muted mb-3 text-xs font-medium tracking-wider uppercase">Folders</h2>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    {folderList.map((f) => (
+                    {folderList.map((f, i) => (
                       <FolderCard
                         key={f.id}
+                        index={i}
                         folder={f}
                         onOpen={() => setParams({ folder: f.id, q: null })}
                         onRename={() => setFolderModal({ open: true, folder: f })}
@@ -292,7 +303,7 @@ export function LibraryView() {
             {assets.error ? (
               <ErrorState message={assets.error.message} onRetry={assets.reload} />
             ) : assets.loading && !assets.data ? (
-              <Spinner label="Loading assets…" />
+              <AssetSkeletons />
             ) : assetList.length === 0 ? (
               searching ? (
                 <EmptyState
@@ -312,9 +323,10 @@ export function LibraryView() {
                   assets.loading && "opacity-60 transition-opacity",
                 )}
               >
-                {assetList.map((a) => (
+                {assetList.map((a, i) => (
                   <AssetCard
                     key={a.id}
+                    index={i}
                     asset={a}
                     showFolder={searching}
                     onEdit={() => setAssetModal({ open: true, asset: a })}
@@ -421,7 +433,7 @@ function Crumb({
       className={clsx(
         "hover:text-fg rounded px-1 py-0.5",
         active && "text-fg font-medium",
-        drop.over && "bg-accent/15 text-accent",
+        drop.over && "bg-accent/15 text-accent-ink",
       )}
     >
       {children}
@@ -499,12 +511,14 @@ function Menu({
 
 function FolderCard({
   folder,
+  index,
   onOpen,
   onRename,
   onDelete,
   onDropAsset,
 }: {
   folder: Folder;
+  index: number;
   onOpen: () => void;
   onRename: () => void;
   onDelete: () => void;
@@ -514,16 +528,26 @@ function FolderCard({
   return (
     <div
       {...drop.props}
+      style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
       className={clsx(
-        "group bg-surface flex items-center gap-3 rounded-xl border p-3 transition",
-        drop.over ? "border-accent bg-accent/5 ring-accent/20 ring-2" : "border-line hover:border-muted/40",
+        "group animate-rise bg-surface relative flex items-center gap-3 overflow-hidden rounded-xl border p-3 transition",
+        drop.over
+          ? "border-accent ring-accent/25 scale-[1.02] ring-4"
+          : "border-line hover:border-accent/40 hover:-translate-y-0.5 hover:shadow-md",
       )}
     >
       <button onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-        <span className="bg-accent/10 text-accent grid size-9 shrink-0 place-items-center rounded-lg">
-          <FolderIcon className="size-4" aria-hidden />
+        <span className="bg-accent-soft text-accent-ink relative grid size-10 shrink-0 place-items-center rounded-lg transition group-hover:scale-105">
+          {drop.over ? (
+            <FolderOpen className="size-5" aria-hidden />
+          ) : (
+            <FolderIcon className="size-5" aria-hidden />
+          )}
         </span>
-        <span className="truncate text-sm font-medium">{folder.name}</span>
+        <span className="min-w-0">
+          <span className="block truncate text-sm font-medium">{folder.name}</span>
+          <span className="text-muted block text-xs">{drop.over ? "Drop to move here" : "Open folder"}</span>
+        </span>
       </button>
       <Menu
         label={`Actions for folder ${folder.name}`}
@@ -538,18 +562,19 @@ function FolderCard({
 
 function AssetCard({
   asset,
+  index,
   showFolder,
   onEdit,
   onAi,
   onTrash,
 }: {
   asset: Asset;
+  index: number;
   showFolder: boolean;
   onEdit: () => void;
   onAi: () => void;
   onTrash: () => void;
 }) {
-  const meta = ASSET_TYPE_META[asset.type];
   return (
     <article
       draggable
@@ -557,28 +582,48 @@ function AssetCard({
         e.dataTransfer.setData(DRAG_TYPE, asset.id);
         e.dataTransfer.effectAllowed = "move";
       }}
-      className="group border-line bg-surface flex flex-col overflow-hidden rounded-xl border transition hover:shadow-md"
+      style={{ animationDelay: `${Math.min(index, 12) * 40}ms` }}
+      className="group animate-rise border-line bg-surface hover:border-accent/30 flex flex-col overflow-hidden rounded-2xl border transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/5"
     >
-      <a
-        href={asset.url}
-        target="_blank"
-        rel="noreferrer noopener"
-        className="bg-surface-2 block aspect-[4/3]"
-        tabIndex={-1}
-      >
-        <AssetThumb asset={asset} />
-      </a>
-      <div className="flex flex-1 flex-col gap-2 p-3">
+      <div className="relative">
+        <a
+          href={asset.url}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="bg-surface-2 block aspect-[4/3] overflow-hidden"
+          tabIndex={-1}
+        >
+          <AssetThumb asset={asset} />
+        </a>
+        <TypeChip
+          type={asset.type}
+          className="bg-surface/90 absolute top-2.5 left-2.5 shadow-sm backdrop-blur"
+        />
+        <button
+          onClick={onAi}
+          title="Generate tags with AI"
+          aria-label={`Generate tags for ${asset.name}`}
+          className="bg-surface/90 text-accent-ink hover:bg-accent hover:text-accent-fg absolute top-2.5 right-2.5 grid size-8 place-items-center rounded-full opacity-0 shadow-sm backdrop-blur transition group-hover:opacity-100 focus-visible:opacity-100"
+        >
+          <Sparkles className="size-4" />
+        </button>
+      </div>
+      <div className="flex flex-1 flex-col gap-2 p-3.5">
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
-            <h3 className="truncate text-sm font-medium" title={asset.name}>
+            <h3 className="truncate text-sm font-semibold" title={asset.name}>
               <a href={asset.url} target="_blank" rel="noreferrer noopener" className="hover:underline">
                 {asset.name}
               </a>
             </h3>
-            <p className="text-muted mt-0.5 text-xs">
-              {meta.label} · {timeAgo(asset.updatedAt)}
-              {showFolder && <> · {asset.folderName ?? "Root"}</>}
+            <p className="text-muted mt-0.5 truncate text-xs">
+              Updated {timeAgo(asset.updatedAt)}
+              {showFolder && (
+                <>
+                  {" "}
+                  · in <span className="text-fg">{asset.folderName ?? "Library"}</span>
+                </>
+              )}
             </p>
           </div>
           <Menu
@@ -590,12 +635,14 @@ function AssetCard({
             ]}
           />
         </div>
-        {asset.description && <p className="text-muted line-clamp-2 text-xs">{asset.description}</p>}
+        {asset.description && (
+          <p className="text-muted line-clamp-2 text-xs leading-relaxed">{asset.description}</p>
+        )}
         <TagList tags={asset.tags} />
         {asset.tags.length === 0 && (
           <button
             onClick={onAi}
-            className="text-accent mt-auto inline-flex items-center gap-1 self-start text-xs font-medium hover:underline"
+            className="border-accent/30 text-accent-ink hover:bg-accent-soft mt-auto inline-flex items-center gap-1.5 self-start rounded-full border border-dashed px-2.5 py-1 text-xs font-medium transition"
           >
             <Sparkles className="size-3.5" aria-hidden /> Generate tags
           </button>
@@ -604,3 +651,25 @@ function AssetCard({
     </article>
   );
 }
+
+function AssetSkeletons() {
+  return (
+    <div
+      role="status"
+      aria-label="Loading assets"
+      className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+    >
+      {Array.from({ length: 4 }, (_, i) => (
+        <div key={i} className="border-line bg-surface overflow-hidden rounded-2xl border">
+          <div className="bg-surface-2 aspect-[4/3] animate-pulse" />
+          <div className="space-y-2 p-3.5">
+            <div className="bg-surface-2 h-3.5 w-2/3 animate-pulse rounded" />
+            <div className="bg-surface-2 h-3 w-1/3 animate-pulse rounded" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;

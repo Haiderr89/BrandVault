@@ -1,7 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { api, ApiError, useApi } from "@/lib/api-client";
+import { readableOn } from "@/lib/color";
 import type { Brand } from "@/lib/types";
 import { Button, ErrorState, Field, FormError, Input, Spinner, useToast } from "./ui";
 
@@ -36,6 +38,7 @@ export function BrandEditor() {
 
 function BrandForm({ brand, onSaved }: { brand: Brand | null; onSaved: (b: Brand) => void }) {
   const toast = useToast();
+  const router = useRouter();
   const [form, setForm] = useState<Form>(brand ? toForm(brand) : EMPTY);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -52,6 +55,7 @@ function BrandForm({ brand, onSaved }: { brand: Brand | null; onSaved: (b: Brand
     try {
       const res = await api<{ brand: Brand }>("/api/brand", { method: brand ? "PATCH" : "POST", body: form });
       onSaved(res.brand);
+      router.refresh(); // re-theme the app shell with the new colors
       toast({ tone: "success", message: brand ? "Brand kit updated" : "Brand kit created" });
     } catch (err) {
       const e = err as ApiError;
@@ -65,10 +69,10 @@ function BrandForm({ brand, onSaved }: { brand: Brand | null; onSaved: (b: Brand
   return (
     <div>
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Brand kit</h1>
+        <h1 className="font-display text-3xl font-semibold tracking-tight">Brand kit</h1>
         <p className="text-muted mt-1 text-sm">
           {brand
-            ? "Your brand's name, colors, logo and type."
+            ? "Your brand's name, colors, logo and type. The whole app wears these colors."
             : "Set up your brand. You can change it any time."}
         </p>
       </header>
@@ -200,73 +204,101 @@ function ColorField({
   );
 }
 
-// Pick black or white text for legibility on a given background.
-function readableOn(hex: string) {
-  if (!HEX.test(hex)) return "#ffffff";
-  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.55 ? "#111111" : "#ffffff";
-}
-
 function BrandPreview({ form }: { form: Form }) {
   const primary = HEX.test(form.primaryColor) ? form.primaryColor : "#cccccc";
   const secondary = HEX.test(form.secondaryColor) ? form.secondaryColor : "#eeeeee";
   const [failedLogo, setFailedLogo] = useState<string | null>(null);
   const logoOk = failedLogo !== form.logoUrl;
+  const font = previewFont(form.fontName);
+  const name = form.name || "Your brand";
+
+  const mark = (size: string) =>
+    form.logoUrl && logoOk ? (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={form.logoUrl}
+        alt=""
+        onError={() => setFailedLogo(form.logoUrl)}
+        className={`${size} rounded-xl object-cover ring-2 ring-white/30`}
+      />
+    ) : (
+      <div
+        className={`${size} grid place-items-center rounded-xl bg-white/20 text-lg font-bold ring-2 ring-white/30`}
+      >
+        {name.charAt(0).toUpperCase()}
+      </div>
+    );
 
   return (
-    <aside className="space-y-4 xl:sticky xl:top-8 xl:self-start">
+    <aside className="space-y-3 xl:sticky xl:top-8 xl:self-start">
       <GoogleFont family={form.fontName} />
       <p className="text-muted text-xs font-medium tracking-wider uppercase">Live preview</p>
-      <div className="border-line bg-surface overflow-hidden rounded-2xl border">
+
+      {/* Hero */}
+      <div
+        className="relative overflow-hidden rounded-2xl p-5 shadow-sm"
+        style={{
+          background: `linear-gradient(135deg, ${primary} 0%, ${primary} 55%, ${secondary} 130%)`,
+          color: readableOn(primary),
+        }}
+      >
+        <div className="dot-grid absolute inset-0 opacity-30 mix-blend-overlay" />
         <div
-          className="flex items-center gap-3 p-5"
-          style={{ background: primary, color: readableOn(primary) }}
-        >
-          {form.logoUrl && logoOk ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={form.logoUrl}
-              alt=""
-              onError={() => setFailedLogo(form.logoUrl)}
-              className="size-12 rounded-xl bg-white/20 object-cover"
-            />
-          ) : (
-            <div className="grid size-12 place-items-center rounded-xl bg-white/20 text-lg font-bold">
-              {(form.name || "B").charAt(0).toUpperCase()}
-            </div>
-          )}
+          className="absolute -top-10 -right-10 size-36 rounded-full opacity-60 blur-2xl"
+          style={{ background: secondary }}
+        />
+        <div className="relative flex items-center gap-3">
+          {mark("size-12")}
           <div className="min-w-0">
-            <p className="truncate text-lg font-semibold" style={{ fontFamily: previewFont(form.fontName) }}>
-              {form.name || "Your brand"}
+            <p className="truncate text-xl font-semibold" style={{ fontFamily: font }}>
+              {name}
             </p>
-            <p className="text-xs opacity-80">{form.fontName || "Default font"}</p>
+            <p className="text-xs opacity-80">Brand kit</p>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3 p-5">
-          {[
-            ["Primary", primary, form.primaryColor],
-            ["Secondary", secondary, form.secondaryColor],
-          ].map(([label, color, raw]) => (
-            <div key={label}>
-              <div
-                className="flex h-20 items-end rounded-xl p-2 text-xs font-medium"
-                style={{ background: color, color: readableOn(color) }}
-              >
-                {label}
-              </div>
-              <p className="text-muted mt-1.5 font-mono text-xs">{raw.toUpperCase()}</p>
+        <p className="relative mt-8 text-4xl leading-none font-semibold" style={{ fontFamily: font }}>
+          Aa Bb Cc
+        </p>
+        <p className="relative mt-2 text-xs opacity-80">{form.fontName || "Default font"} · 0123456789</p>
+      </div>
+
+      {/* Swatches */}
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          ["Primary", primary, form.primaryColor],
+          ["Secondary", secondary, form.secondaryColor],
+        ].map(([label, color, raw]) => (
+          <div key={label} className="border-line bg-surface overflow-hidden rounded-xl border">
+            <div className="h-16" style={{ background: color }} />
+            <div className="px-3 py-2">
+              <p className="text-xs font-medium">{label}</p>
+              <p className="text-muted font-mono text-[11px]">{raw.toUpperCase()}</p>
             </div>
-          ))}
-        </div>
-        <div className="border-line border-t p-5">
-          <button
-            type="button"
-            tabIndex={-1}
-            className="rounded-lg px-4 py-2 text-sm font-medium"
-            style={{ background: secondary, color: readableOn(secondary) }}
+          </div>
+        ))}
+      </div>
+
+      {/* In context */}
+      <div className="border-line bg-surface rounded-xl border p-3">
+        <p className="text-muted mb-2 text-[11px] font-medium tracking-wider uppercase">In use</p>
+        <div className="flex items-center gap-3">
+          <div
+            className="grid aspect-square w-20 shrink-0 place-items-center rounded-lg p-2 text-center text-[10px] leading-tight font-semibold"
+            style={{ background: secondary, color: readableOn(secondary), fontFamily: font }}
           >
-            Sample button
-          </button>
+            New season. New {name.split(" ")[0]}.
+          </div>
+          <div className="min-w-0 flex-1 space-y-2">
+            <p className="text-sm font-semibold" style={{ fontFamily: font }}>
+              Social post
+            </p>
+            <span
+              className="inline-block rounded-md px-3 py-1.5 text-xs font-medium"
+              style={{ background: primary, color: readableOn(primary) }}
+            >
+              Shop now
+            </span>
+          </div>
         </div>
       </div>
     </aside>

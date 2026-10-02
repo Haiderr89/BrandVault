@@ -85,7 +85,7 @@ export function AiTagsModal({ asset, onClose, onSaved }: Props) {
           {generating && (
             <div role="status" className="border-line space-y-3 rounded-xl border p-4">
               <p className="text-muted flex items-center gap-2 text-sm">
-                <Sparkles className="text-accent size-4 animate-pulse" aria-hidden /> Asking Claude…
+                <Sparkles className="text-accent-ink size-4 animate-pulse" aria-hidden /> Asking Claude…
               </p>
               <div className="bg-surface-2 h-3 w-3/4 animate-pulse rounded" />
               <div className="bg-surface-2 h-3 w-1/2 animate-pulse rounded" />
@@ -103,7 +103,7 @@ export function AiTagsModal({ asset, onClose, onSaved }: Props) {
                     {draft.tags.map((t) => (
                       <span
                         key={t}
-                        className="bg-accent/10 text-accent inline-flex items-center gap-1 rounded-md py-0.5 pr-1 pl-2 text-xs font-medium"
+                        className="bg-accent-soft text-accent-ink inline-flex items-center gap-1 rounded-md py-0.5 pr-1 pl-2 text-xs font-medium"
                       >
                         {t}
                         <button

@@ -6,7 +6,10 @@ const schema = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   ANTHROPIC_MODEL: z.string().default("claude-opus-5"),
   // Optional n8n bonus. When unset, webhook events are skipped.
-  N8N_WEBHOOK_URL: z.url().optional().or(z.literal("").transform(() => undefined)),
+  N8N_WEBHOOK_URL: z
+    .url()
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
   N8N_WEBHOOK_SECRET: z.string().optional(),
 });
 
