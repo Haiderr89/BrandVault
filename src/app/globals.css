@@ -1,30 +1,47 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #f7f7f8;
+  --bg: #f6f5f3;
   --surface: #ffffff;
-  --surface-2: #f1f1f3;
-  --line: #e4e4e7;
-  --fg: #18181b;
-  --muted: #71717a;
-  --accent: #6d28d9;
-  --accent-fg: #ffffff;
+  --surface-2: #f0efec;
+  --line: #e6e4df;
+  --fg: #1a1917;
+  --muted: #6f6c66;
   --danger: #dc2626;
   --success: #16a34a;
+
+  /* Brand-driven. The app layout overrides these with the workspace's brand colors. */
+  --accent: #6d28d9;
+  --accent-2: #f59e0b;
+  --accent-fg: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0c0c0e;
+    --bg: #0d0d0f;
     --surface: #151518;
     --surface-2: #1d1d21;
     --line: #2a2a30;
     --fg: #f4f4f5;
     --muted: #a1a1aa;
-    --accent: #a78bfa;
-    --accent-fg: #18181b;
     --danger: #f87171;
     --success: #4ade80;
+  }
+}
+
+/* Derived tokens are declared wherever the accent may be overridden so they
+   recompute from the local --accent (custom properties resolve where defined). */
+:root,
+.brand-theme {
+  /* Accent tuned for legible text on the page background in each scheme. */
+  --accent-ink: color-mix(in oklab, var(--accent) 82%, black);
+  --accent-soft: color-mix(in oklab, var(--accent) 12%, transparent);
+}
+@media (prefers-color-scheme: dark) {
+  :root,
+  .brand-theme {
+    --accent-ink: color-mix(in oklab, var(--accent) 55%, white);
+    --accent-soft: color-mix(in oklab, var(--accent) 20%, transparent);
   }
 }
 
@@ -36,11 +53,46 @@
   --color-fg: var(--fg);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
   --color-accent-fg: var(--accent-fg);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
   --color-danger: var(--danger);
   --color-success: var(--success);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-display-face);
+
+  --animate-rise: rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-pop: pop 0.18s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-float: float 7s ease-in-out infinite;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(4px);
+  }
+}
+@keyframes float {
+  50% {
+    transform: translateY(-10px) rotate(var(--tilt, 0deg));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
 body {
@@ -50,4 +102,10 @@ body {
 
 ::selection {
   background: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+/* Subtle dotted texture used on hero panels. */
+.dot-grid {
+  background-image: radial-gradient(color-mix(in srgb, var(--fg) 14%, transparent) 1px, transparent 1px);
+  background-size: 18px 18px;
 }

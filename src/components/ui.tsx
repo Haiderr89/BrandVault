@@ -126,8 +126,10 @@ export function EmptyState({
 }) {
   return (
     <div className="border-line flex flex-col items-center justify-center rounded-xl border border-dashed px-6 py-14 text-center">
-      <div className="bg-surface-2 text-muted mb-3 grid size-11 place-items-center rounded-full">{icon}</div>
-      <p className="font-medium">{title}</p>
+      <div className="from-accent/25 to-accent-2/25 text-accent-ink ring-surface mb-4 grid size-14 place-items-center rounded-2xl bg-gradient-to-br ring-8">
+        {icon}
+      </div>
+      <p className="font-display text-lg font-semibold">{title}</p>
       {body && <p className="text-muted mt-1 max-w-sm text-sm">{body}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
@@ -193,7 +195,7 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         className={clsx(
-          "border-line bg-surface relative max-h-[90vh] w-full overflow-y-auto rounded-t-2xl border p-5 shadow-xl sm:rounded-2xl",
+          "border-line bg-surface animate-pop relative max-h-[90vh] w-full overflow-y-auto rounded-t-2xl border p-5 shadow-2xl sm:rounded-2xl",
           wide ? "sm:max-w-xl" : "sm:max-w-md",
         )}
       >
@@ -241,7 +243,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={t.id}
             className={clsx(
-              "pointer-events-auto flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm shadow-lg",
+              "animate-rise pointer-events-auto flex items-center gap-3 rounded-full px-4 py-2.5 text-sm shadow-lg",
               t.tone === "error" ? "bg-danger text-white" : "bg-fg text-bg",
             )}
           >
