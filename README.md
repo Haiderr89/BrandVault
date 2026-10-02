@@ -4,20 +4,20 @@ A brand kit and asset library: one brand profile per workspace, plus nested fold
 
 - **Live demo:** _TBD_
 - **Demo login:** `demo@brandvault.dev` / `Demo1234!`, or click **Continue as demo** on the sign-in page
-- **Tests:** `npm test` (18 API tests, no database needed)
+- **Tests:** `npm test` (22 API tests, no database needed)
 
 ## Stack
 
-| Layer      | Choice                                                                                         |
-| ---------- | ---------------------------------------------------------------------------------------------- |
-| App + API  | Next.js 16 (App Router) + TypeScript. Route handlers under `src/app/api`.                      |
-| Database   | PostgreSQL (Neon in production), Drizzle ORM, SQL migrations in `drizzle/`                     |
-| Auth       | Email + password (bcrypt), HS256 JWT in an httpOnly, SameSite=Lax cookie (`jose`)              |
-| Validation | Zod, shared by API input, AI output and the AI save endpoint                                   |
-| GenAI      | Anthropic Claude (`claude-opus-5`, low effort) via `@anthropic-ai/sdk` with structured outputs |
-| UI         | Tailwind CSS v4, lucide icons, light/dark via `prefers-color-scheme`                           |
-| Tests      | Vitest, run against in-memory Postgres (PGlite) with the real migrations                       |
-| Hosting    | Vercel (app + API) + Neon (Postgres)                                                           |
+| Layer      | Choice                                                                                                                                                     |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| App + API  | Next.js 16 (App Router) + TypeScript. Route handlers under `src/app/api`.                                                                                  |
+| Database   | PostgreSQL (Neon in production), Drizzle ORM, SQL migrations in `drizzle/`                                                                                 |
+| Auth       | Email + password (bcrypt), HS256 JWT in an httpOnly, SameSite=Lax cookie (`jose`)                                                                          |
+| Validation | Zod, shared by API input, AI output and the AI save endpoint                                                                                               |
+| GenAI      | Google Gemini (`gemini-flash-latest`, free tier) via `@google/genai`, or Anthropic Claude via `@anthropic-ai/sdk`. Both use JSON-schema-constrained output |
+| UI         | Tailwind CSS v4, lucide icons, light/dark via `prefers-color-scheme`                                                                                       |
+| Tests      | Vitest, run against in-memory Postgres (PGlite) with the real migrations                                                                                   |
+| Hosting    | Vercel (app + API) + Neon (Postgres)                                                                                                                       |
 
 ## Local setup
 
@@ -112,17 +112,17 @@ Status codes: **400** invalid input or JSON, **401** missing, invalid or expired
 
 ## GenAI: asset tag and description assistant
 
-- **Provider:** Anthropic Claude. The model is configurable through `ANTHROPIC_MODEL` (default `claude-opus-5`, run at `effort: "low"` since the task is small).
+- **Provider:** **Google Gemini** in the live demo (`GEMINI_API_KEY`, model `GEMINI_MODEL`, default `gemini-flash-latest`). If no Gemini key is set, the same feature runs on **Anthropic Claude** (`ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`). Each provider is a small adapter in [`src/server/ai.ts`](src/server/ai.ts) that returns raw JSON; the prompt, the input and the validation are shared.
 - **Endpoint:** `POST /api/assets/:id/ai-tags`, then the user reviews and edits, then `PATCH /api/assets/:id/ai-tags/save`.
 - **Prompt:** [`prompts/asset-tagging.md`](prompts/asset-tagging.md) (system prompt, loaded at runtime).
 - **Input:** asset name, type, URL, folder name, and the brand's name, colors and font, wrapped in `<asset_context>` and marked as data, not instructions.
 - **Grounding:** the prompt forbids describing visual content the model can't see, and forbids inventing products, dates or claims. Thin metadata should produce generic tags.
 - **Validation:**
-  1. Structured outputs (`output_config.format` via `zodOutputFormat`) constrain Claude to `{ tags: string[], description, usage_suggestion }`. The SDK throws if the output isn't valid JSON for that shape.
+  1. Structured output constrains the model to `{ tags: string[], description, usage_suggestion }`: Gemini via `responseMimeType: "application/json"` + `responseJsonSchema` (generated from the Zod schema), Claude via `output_config.format`. Non-JSON output returns 502.
   2. `aiSuggestionSchema` (Zod) then enforces 1–10 lowercase, deduped tags of 32 characters or fewer, and non-empty description and usage of 300 characters or fewer. A refusal, a truncated response (`stop_reason !== "end_turn"`) or a schema failure returns **502** and nothing is saved.
   3. The save endpoint validates the (possibly edited) body with the same schema.
 - **Safety:** the API key only exists server-side (`ANTHROPIC_API_KEY`). No AI call happens from the browser. Without a key the endpoint returns 503 and the UI shows the error with a retry.
-- Covered by `tests/ai.test.ts`, which mocks the SDK: normalization, invalid output, truncation and the save validation.
+- Covered by `tests/ai.test.ts` (Claude) and `tests/ai-gemini.test.ts` (Gemini, including free-tier 429 → 503), which mock the SDKs: normalization, invalid output, truncation and the save validation.
 
 ## Bonus: n8n webhook
 
@@ -167,7 +167,7 @@ The backend sends a webhook to n8n for three events, and the n8n workflow sends 
 
 ## What I'd do next (another week)
 
-1. **Real uploads** to S3 or R2 with presigned URLs, and send images to Claude as vision input so tags can describe actual content.
+1. **Real uploads** to S3 or R2 with presigned URLs, and send images to the model as vision input so tags can describe actual content.
 2. **Search and scale:** search tags and descriptions too (Postgres full-text or `pg_trgm`), cursor pagination, bulk select, move and trash.
 3. **Hardening and ops:** rate limits, an activity log ("asset trashed by …"), a Playwright smoke test in CI, and an automatic 30-day trash purge.
 
