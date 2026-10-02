@@ -18,6 +18,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { api, ApiError, useApi } from "@/lib/api-client";
 import { timeAgo } from "@/lib/format";
 import type { Asset, Folder } from "@/lib/types";
@@ -441,71 +442,105 @@ function Crumb({
   );
 }
 
-function Menu({
-  label,
-  items,
-}: {
-  label: string;
-  items: { label: string; icon: ReactNode; onClick: () => void; danger?: boolean }[];
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+type MenuItem = { label: string; icon: ReactNode; onClick: () => void; danger?: boolean };
+type MenuPosition = { right: number; top?: number; bottom?: number };
+
+/**
+ * Kebab menu rendered in a portal with fixed positioning, so it isn't clipped
+ * by the card's overflow and flips upward when there's no room below.
+ */
+function Menu({ label, items }: { label: string; items: MenuItem[] }) {
+  const [pos, setPos] = useState<MenuPosition | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const open = pos !== null;
+
+  function toggle() {
+    if (open || !buttonRef.current) return setPos(null);
+    const r = buttonRef.current.getBoundingClientRect();
+    const menuHeight = items.length * 36 + 10;
+    const right = window.innerWidth - r.right;
+    const fitsBelow = r.bottom + 4 + menuHeight <= window.innerHeight - 8;
+    setPos(fitsBelow ? { right, top: r.bottom + 4 } : { right, bottom: window.innerHeight - r.top + 4 });
+  }
+
   useEffect(() => {
     if (!open) return;
-    const close = (e: MouseEvent | KeyboardEvent) => {
-      if (e instanceof KeyboardEvent ? e.key === "Escape" : !ref.current?.contains(e.target as Node))
-        setOpen(false);
+    const close = () => setPos(null);
+    const onPointer = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!menuRef.current?.contains(t) && !buttonRef.current?.contains(t)) close();
     };
-    document.addEventListener("mousedown", close);
-    document.addEventListener("keydown", close);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        close();
+        buttonRef.current?.focus();
+      }
+    };
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+    menuRef.current?.querySelector<HTMLElement>("[role=menuitem]")?.focus();
     return () => {
-      document.removeEventListener("mousedown", close);
-      document.removeEventListener("keydown", close);
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
     };
   }, [open]);
 
   return (
-    <div ref={ref} className="relative">
+    <>
       <button
+        ref={buttonRef}
         type="button"
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={(e) => {
           e.stopPropagation();
-          setOpen((o) => !o);
+          toggle();
         }}
-        className="text-muted hover:bg-surface-2 hover:text-fg rounded-md p-1.5"
+        className={clsx(
+          "hover:bg-surface-2 hover:text-fg rounded-md p-1.5",
+          open ? "bg-surface-2 text-fg" : "text-muted",
+        )}
       >
         <MoreHorizontal className="size-4" />
       </button>
-      {open && (
-        <div
-          role="menu"
-          className="border-line bg-surface absolute right-0 z-20 mt-1 w-48 overflow-hidden rounded-lg border py-1 shadow-lg"
-        >
-          {items.map((it) => (
-            <button
-              key={it.label}
-              role="menuitem"
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpen(false);
-                it.onClick();
-              }}
-              className={clsx(
-                "hover:bg-surface-2 flex w-full items-center gap-2 px-3 py-2 text-left text-sm",
-                it.danger && "text-danger",
-              )}
-            >
-              {it.icon}
-              {it.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+      {pos &&
+        createPortal(
+          <div
+            ref={menuRef}
+            role="menu"
+            aria-label={label}
+            style={pos}
+            className="border-line bg-surface animate-pop fixed z-50 w-48 overflow-hidden rounded-xl border py-1 shadow-xl shadow-black/20"
+          >
+            {items.map((it) => (
+              <button
+                key={it.label}
+                role="menuitem"
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPos(null);
+                  it.onClick();
+                }}
+                className={clsx(
+                  "hover:bg-surface-2 focus-visible:bg-surface-2 flex w-full items-center gap-2 px-3 py-2 text-left text-sm outline-none",
+                  it.danger && "text-danger",
+                )}
+              >
+                {it.icon}
+                {it.label}
+              </button>
+            ))}
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }
 
