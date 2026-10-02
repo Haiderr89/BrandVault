@@ -85,10 +85,33 @@ describe("AI tagging via Gemini", () => {
     expect((await suggestNow()).status).toBe(502);
   });
 
-  it("returns 503 when Gemini rate-limits (free tier)", async () => {
+  it("retries when the model is overloaded and falls back to the lite model", async () => {
+    generateContent
+      .mockRejectedValueOnce(new ApiError({ message: "high demand", status: 503 }))
+      .mockRejectedValueOnce(new ApiError({ message: "high demand", status: 503 }))
+      .mockResolvedValueOnce({
+        text: JSON.stringify({ tags: ["lookbook"], description: "Lookbook.", usage_suggestion: "Retail." }),
+      });
+    const r = await suggestNow();
+    expect(r.status).toBe(200);
+    expect(generateContent.mock.calls.map((c) => c[0].model)).toEqual([
+      "gemini-flash-latest",
+      "gemini-flash-latest",
+      "gemini-flash-lite-latest",
+    ]);
+  });
+
+  it("returns 503 ai_busy when every attempt is rate-limited", async () => {
     generateContent.mockRejectedValue(new ApiError({ message: "quota", status: 429 }));
     const r = await suggestNow();
     expect(r.status).toBe(503);
     expect(r.body.error.code).toBe("ai_busy");
+    expect(generateContent).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not retry non-transient errors (e.g. bad key)", async () => {
+    generateContent.mockRejectedValue(new ApiError({ message: "API key not valid", status: 400 }));
+    expect((await suggestNow()).status).toBe(502);
+    expect(generateContent).toHaveBeenCalledTimes(1);
   });
 });

@@ -6,6 +6,7 @@ const schema = z.object({
   // AI provider: Gemini is used when GEMINI_API_KEY is set, otherwise Claude.
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().default("gemini-flash-latest"),
+  GEMINI_FALLBACK_MODEL: z.string().default("gemini-flash-lite-latest"),
   ANTHROPIC_API_KEY: z.string().optional(),
   ANTHROPIC_MODEL: z.string().default("claude-opus-5"),
   // Optional n8n bonus. When unset, webhook events are skipped.

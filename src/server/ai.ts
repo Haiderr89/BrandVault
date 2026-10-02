@@ -33,30 +33,43 @@ type Provider = (system: string, userMessage: string) => Promise<unknown>;
 
 // ---------- Gemini ----------
 let gemini: GoogleGenAI | undefined;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+// Overloaded / rate-limited / transient: worth retrying (common on the free tier).
+const isTransient = (status: number) => status === 429 || status === 500 || status === 503;
+
 const geminiProvider: Provider = async (system, userMessage) => {
   gemini ??= new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+  // Two tries on the main model, then one on the lighter fallback model.
+  const attempts = [env.GEMINI_MODEL, env.GEMINI_MODEL, env.GEMINI_FALLBACK_MODEL];
+  let lastStatus = 0;
   let text: string | undefined;
-  try {
-    const response = await gemini.models.generateContent({
-      model: env.GEMINI_MODEL,
-      contents: userMessage,
-      config: {
-        systemInstruction: system,
-        responseMimeType: "application/json",
-        responseJsonSchema: z.toJSONSchema(wireSchema),
-        abortSignal: AbortSignal.timeout(45_000),
-      },
-    });
-    text = response.text;
-  } catch (err) {
-    if (err instanceof GeminiApiError) {
-      console.error("Gemini API error", err.status, err.message);
-      if (err.status === 429) throw aiBusy();
-      throw aiFailed("The AI service returned an error. Try again.");
+
+  for (const [i, model] of attempts.entries()) {
+    try {
+      const response = await gemini.models.generateContent({
+        model,
+        contents: userMessage,
+        config: {
+          systemInstruction: system,
+          responseMimeType: "application/json",
+          responseJsonSchema: z.toJSONSchema(wireSchema),
+          abortSignal: AbortSignal.timeout(20_000),
+        },
+      });
+      text = response.text;
+      break;
+    } catch (err) {
+      if (!(err instanceof GeminiApiError)) throw err;
+      lastStatus = err.status;
+      console.error(`Gemini API error (attempt ${i + 1}, ${model})`, err.status, err.message);
+      if (!isTransient(err.status)) throw aiFailed("The AI service returned an error. Try again.");
+      if (i < attempts.length - 1) await sleep(800 * (i + 1));
     }
-    throw err;
   }
-  if (!text) throw aiFailed("The AI could not produce a suggestion for this asset.");
+
+  if (text === undefined) {
+    throw lastStatus ? aiBusy() : aiFailed("The AI could not produce a suggestion for this asset.");
+  }
   try {
     return JSON.parse(text);
   } catch {

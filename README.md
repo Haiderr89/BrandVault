@@ -4,7 +4,7 @@ A brand kit and asset library: one brand profile per workspace, plus nested fold
 
 - **Live demo:** _TBD_
 - **Demo login:** `demo@brandvault.dev` / `Demo1234!`, or click **Continue as demo** on the sign-in page
-- **Tests:** `npm test` (22 API tests, no database needed)
+- **Tests:** `npm test` (24 API tests, no database needed)
 
 ## Stack
 
@@ -112,7 +112,7 @@ Status codes: **400** invalid input or JSON, **401** missing, invalid or expired
 
 ## GenAI: asset tag and description assistant
 
-- **Provider:** **Google Gemini** in the live demo (`GEMINI_API_KEY`, model `GEMINI_MODEL`, default `gemini-flash-latest`). If no Gemini key is set, the same feature runs on **Anthropic Claude** (`ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`). Each provider is a small adapter in [`src/server/ai.ts`](src/server/ai.ts) that returns raw JSON; the prompt, the input and the validation are shared.
+- **Provider:** **Google Gemini** in the live demo (`GEMINI_API_KEY`, model `GEMINI_MODEL`, default `gemini-flash-latest`). If no Gemini key is set, the same feature runs on **Anthropic Claude** (`ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`). Free-tier Gemini is sometimes overloaded, so transient errors (429/500/503) are retried once and then sent to `GEMINI_FALLBACK_MODEL` (`gemini-flash-lite-latest`). If all attempts fail the user gets 503 "busy, try again". Each provider is a small adapter in [`src/server/ai.ts`](src/server/ai.ts) that returns raw JSON; the prompt, the input and the validation are shared.
 - **Endpoint:** `POST /api/assets/:id/ai-tags`, then the user reviews and edits, then `PATCH /api/assets/:id/ai-tags/save`.
 - **Prompt:** [`prompts/asset-tagging.md`](prompts/asset-tagging.md) (system prompt, loaded at runtime).
 - **Input:** asset name, type, URL, folder name, and the brand's name, colors and font, wrapped in `<asset_context>` and marked as data, not instructions.
